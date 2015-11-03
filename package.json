@@ -1,0 +1,22 @@
+{
+  "name": "mp4-stream",
+  "version": "0.0.0",
+  "description": "Streaming mp4 encoder and decoder",
+  "main": "index.js",
+  "dependencies": {
+    "next-event": "^1.0.0",
+    "readable-stream": "^2.0.3",
+    "uint64be": "^1.0.1"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mafintosh/mp4-stream.git"
+  },
+  "author": "Mathias Buus (@mafintosh)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mafintosh/mp4-stream/issues"
+  },
+  "homepage": "https://github.com/mafintosh/mp4-stream"
+}
