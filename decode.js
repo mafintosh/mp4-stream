@@ -20,16 +20,13 @@ function Decoder () {
   this._ondrain = null
 
   this._parse = parse
-  this._stack = []
   this._atomHeader(parse)
-
-  this.on('finish', this._stackCheck)
   this._ondrain = null
 
   function parse (type, size) {
     if (size === 1) return self._extendedSize(type)
-
     if (type === 'mdat') return mdat(size)
+
     switch (type) {
       case 'mdat':
       return mdat(size)
@@ -44,28 +41,29 @@ function Decoder () {
       return container(type, size)
 
       case 'free':
-      return skip(size)
+      return free(size)
 
       default:
       return self._atom(size, decode[type] || decode.unknown(type))
     }
   }
 
-  function skip (size) {
-    self.emit('skip', self._offset, self._offset + size)
+  function free (size) {
+    self.emit('atom', {type: 'free', offset: self._offset, length: size})
     self._offset += size
     self._stream(size - 8, next).resume()
   }
 
   function container (type, size) {
-    self._push(size, type)
+    // TODO: is container the right word here?
+    self.emit('atom', {type: type, offset: self._offset, length: size, container: true})
     self._offset += 8
     next()
   }
 
   function mdat (size) {
     var stream = self._stream(size - 8, next)
-    self.emit('atom', {type: 'mdat', stream: stream}, self._offset, self._offset + size)
+    self.emit('atom', {type: 'mdat', offset: self._offset, length: size, stream: stream})
     self._offset += size
   }
 
@@ -83,44 +81,24 @@ Decoder.prototype._extendedSize = function (type, cb) {
   })
 }
 
-Decoder.prototype._push = function (size, name) {
-  this.emit('atom-start', name, this._offset, this._offset + size)
-  this._stack.push({event: name, missing: size - 8, length: size - 8})
-}
-
 Decoder.prototype._atom = function (size, parser) {
   var self = this
   this._buffer(size - 8, function (buf) {
-    self.emit('atom', parser(buf), self._offset, self._offset + size)
+    self.emit('atom', parser(buf, self._offset, size))
     self._offset += size
     self._atomHeader(self._parse)
   })
-}
-
-Decoder.prototype._stackCheck = function () {
-  while (true) {
-    var last = getLast(this._stack)
-    if (!last || last.missing) return
-    this._stack.pop()
-    var nextLast = getLast(this._stack)
-    if (nextLast) nextLast.missing -= last.length
-    this.emit('atom-end', last.event)
-  }
 }
 
 Decoder.prototype._write = function (data, enc, next) {
   var drained = true
 
   while (data.length) {
-    this._stackCheck()
-
     var consumed = data.length < this._missing ? data.length : this._missing
     if (this._buf) data.copy(this._buf, this._buf.length - this._missing)
     else if (this._str) drained = this._str.write(consumed === data.length ? data : data.slice(0, consumed))
 
     this._missing -= consumed
-    var last = getLast(this._stack)
-    if (last) last.missing -= consumed
 
     if (!this._missing) {
       var buf = this._buf
@@ -162,8 +140,4 @@ Decoder.prototype._atomHeader = function (cb) {
     var type = buf.toString('ascii', 4, 8)
     cb(type, size)
   })
-}
-
-function getLast (list) {
-  return list.length ? list[list.length - 1] : null
 }

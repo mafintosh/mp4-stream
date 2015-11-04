@@ -1,16 +1,25 @@
 var TIME_OFFSET = 2082844800000
 
-exports.ftyp = function (buf) {
+exports.ftyp = function (buf, offset, length) {
   var brand = buf.toString('ascii', 0, 4)
   var version = buf.readUInt32BE(4)
   var compatibleBrands = []
   for (var i = 8; i < buf.length; i += 4) compatibleBrands.push(buf.toString('ascii', i, i + 4))
-  return {type: 'ftyp', brand: brand, version: version, compatibleBrands: compatibleBrands}
+  return {
+    type: 'ftyp',
+    offset: offset,
+    length: length,
+    brand: brand,
+    version: version,
+    compatibleBrands: compatibleBrands
+  }
 }
 
-exports.mvhd = function (buf) {
+exports.mvhd = function (buf, offset, length) {
   return {
     type: 'mvhd',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     ctime: date(buf, 4),
@@ -30,9 +39,11 @@ exports.mvhd = function (buf) {
   }
 }
 
-exports.tkhd = function (buf) {
+exports.tkhd = function (buf, offset, length) {
   return {
     type: 'tkhd',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     ctime: date(buf, 4),
@@ -48,9 +59,11 @@ exports.tkhd = function (buf) {
   }
 }
 
-exports.mdhd = function (buf) {
+exports.mdhd = function (buf, offset, length) {
   return {
     type: 'mdhd',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     ctime: date(buf, 4),
@@ -62,9 +75,11 @@ exports.mdhd = function (buf) {
   }
 }
 
-exports.vmhd = function (buf) {
+exports.vmhd = function (buf, offset, length) {
   return {
     type: 'vmhd',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     graphicsMode: buf.readUInt16BE(4),
@@ -72,38 +87,42 @@ exports.vmhd = function (buf) {
   }
 }
 
-exports.smhd = function (buf) {
+exports.smhd = function (buf, offset, length) {
   return {
     type: 'smhd',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     balance: buf.readUInt16BE(4)
   }
 }
 
-exports.stsd = function (buf) {
+exports.stsd = function (buf, offset, length) {
   var num = buf.readUInt32BE(4)
   var entries = new Array(num)
-  var offset = 8
+  var ptr = 8
 
   for (var i = 0; i < num; i++) {
-    var size = buf.readUInt32BE(offset)
-    var type = buf.toString('ascii', offset + 4, offset + 8)
-    var referenceIndex = buf.readUInt16BE(offset + 14)
-    var data = buf.slice(offset + 16, offset + size)
+    var size = buf.readUInt32BE(ptr)
+    var type = buf.toString('ascii', ptr + 4, ptr + 8)
+    var referenceIndex = buf.readUInt16BE(ptr + 14)
+    var data = buf.slice(ptr + 16, ptr + size)
     entries[i] = {type: type, referenceIndex: referenceIndex, data: data}
-    offset += size
+    ptr += size
   }
 
   return {
     type: 'stsd',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     entries: entries
   }
 }
 
-exports.stco = function (buf) {
+exports.stco = function (buf, offset, length) {
   var num = buf.readUInt32BE(4)
   var entries = new Array(num)
 
@@ -113,13 +132,15 @@ exports.stco = function (buf) {
 
   return {
     type: 'stco',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     entries: entries
   }
 }
 
-exports.stsz = function (buf) {
+exports.stsz = function (buf, offset, length) {
   var num = buf.readUInt32BE(4)
   var entries = new Array(num)
 
@@ -129,13 +150,15 @@ exports.stsz = function (buf) {
 
   return {
     type: 'stsz',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     entries: entries
   }
 }
 
-exports.stss = function (buf) {
+exports.stss = function (buf, offset, length) {
   var num = buf.readUInt32BE(4)
   var entries = new Array(num)
 
@@ -145,83 +168,91 @@ exports.stss = function (buf) {
 
   return {
     type: 'stss',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     entries: entries
   }
 }
 
-exports.stts = function (buf) {
+exports.stts = function (buf, offset, length) {
   var num = buf.readUInt32BE(4)
   var entries = new Array(num)
 
   for (var i = 0; i < num; i++) {
-    var offset = i * 8 + 8
+    var ptr = i * 8 + 8
     entries[i] = {
-      count: buf.readUInt32BE(offset),
-      duration: buf.readUInt32BE(offset + 4)
+      count: buf.readUInt32BE(ptr),
+      duration: buf.readUInt32BE(ptr + 4)
     }
   }
 
   return {
     type: 'stts',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     entries: entries
   }
 }
 
-exports.ctts = function (buf) {
+exports.ctts = function (buf, offset, length) {
   var num = buf.readUInt32BE(4)
   var entries = new Array(num)
 
   for (var i = 0; i < num; i++) {
-    var offset = i * 8 + 8
+    var ptr = i * 8 + 8
     entries[i] = {
-      count: buf.readUInt32BE(offset),
-      compositionOffset: buf.readInt32BE(offset + 4)
+      count: buf.readUInt32BE(ptr),
+      compositionOffset: buf.readInt32BE(ptr + 4)
     }
   }
 
   return {
     type: 'ctts',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     entries: entries
   }
 }
 
-exports.stsc = function (buf) {
+exports.stsc = function (buf, offset, length) {
   var num = buf.readUInt32BE(4)
   var entries = new Array(num)
 
   for (var i = 0; i < num; i++) {
-    var offset = i * 12 + 8
+    var ptr = i * 12 + 8
     entries[i] = {
-      firstChunk: buf.readUInt32BE(offset),
-      samplesPerChunk: buf.readUInt32BE(offset + 4),
-      sampleDescriptionId: buf.readUInt32BE(offset + 8)
+      firstChunk: buf.readUInt32BE(ptr),
+      samplesPerChunk: buf.readUInt32BE(ptr + 4),
+      sampleDescriptionId: buf.readUInt32BE(ptr + 8)
     }
   }
 
   return {
     type: 'stsc',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     entries: entries
   }
 }
 
-exports.dref = function (buf) {
+exports.dref = function (buf, offset, length) {
   var num = buf.readUInt32BE(4)
   var entries = new Array(num)
-  var offset = 8
+  var ptr = 8
 
   for (var i = 0; i < num; i++) {
-    var size = buf.readUInt32BE(offset)
-    var type = buf.toString('ascii', offset + 4, offset + 8)
-    var tmp = buf.slice(offset + 8, offset + size)
-    offset += size
+    var size = buf.readUInt32BE(ptr)
+    var type = buf.toString('ascii', ptr + 4, ptr + 8)
+    var tmp = buf.slice(ptr + 8, ptr + size)
+    ptr += size
 
     entries[i] = {
       type: type,
@@ -231,36 +262,42 @@ exports.dref = function (buf) {
 
   return {
     type: 'dref',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     entries: entries
   }
 }
 
-exports.elst = function (buf) {
+exports.elst = function (buf, offset, length) {
   var num = buf.readUInt32BE(4)
   var entries = new Array(num)
 
   for (var i = 0; i < num; i++) {
-    var offset = i * 12 + 8
+    var ptr = i * 12 + 8
     entries[i] = {
-      trackDuration: buf.readUInt32BE(offset),
-      mediaTime: buf.readInt32BE(offset + 4),
-      mediaRate: fixed32(buf, offset + 8)
+      trackDuration: buf.readUInt32BE(ptr),
+      mediaTime: buf.readInt32BE(ptr + 4),
+      mediaRate: fixed32(buf, ptr + 8)
     }
   }
 
   return {
     type: 'elst',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     entries: entries
   }
 }
 
-exports.hdlr = function (buf) {
+exports.hdlr = function (buf, offset, length) {
   return {
     type: 'hdlr',
+    offset: offset,
+    length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
     componentType: buf[4] === 0 ? '' : buf.toString('ascii', 4, 8),
@@ -270,8 +307,14 @@ exports.hdlr = function (buf) {
 }
 
 exports.unknown = function (type) {
-  return function (buf) {
-    return {type: type, unknown: true, size: buf.length, buf: buf}
+  return function (buf, offset, length) {
+    return {
+      type: type,
+      offset: offset,
+      length: length,
+      unknown: true,
+      buffer: buf
+    }
   }
 }
 
