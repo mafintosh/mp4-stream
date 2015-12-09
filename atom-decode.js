@@ -154,7 +154,8 @@ exports.stsz = function (buf, offset, length) {
     length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
-    entries: entries
+    entries: entries,
+    data: buf.slice(num * 4 + 8)
   }
 }
 
@@ -301,8 +302,8 @@ exports.hdlr = function (buf, offset, length) {
     version: buf[0],
     flags: buf.slice(1, 4),
     componentType: buf[4] === 0 ? '' : buf.toString('ascii', 4, 8),
-    componentSubType: buf.toString('ascii', 8, 12),
-    componentName: buf.toString('ascii', 24, buf.length - 1)
+    componentSubType: buf[8] === 0 ? '' : buf.toString('ascii', 8, 12),
+    componentName: buf[24] === 0 ? '' : buf.toString('ascii', 24, buf.length - 1)
   }
 }
 

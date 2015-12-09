@@ -12,6 +12,8 @@ function Decoder () {
 
   var self = this
 
+  this.destroyed = false
+
   this._missing = 0
   this._offset = 0
   this._buf = null
@@ -38,6 +40,7 @@ function Decoder () {
       case 'edts':
       case 'dinf':
       case 'stbl':
+      case 'udta':
       return container(type, size)
 
       case 'free':
@@ -74,6 +77,13 @@ function Decoder () {
 
 util.inherits(Decoder, stream.Writable)
 
+Decoder.prototype.destroy = function (err) {
+  if (this.destroyed) return
+  this.destroyed = true
+  if (err) this.emit('error', err)
+  this.emit('close')
+}
+
 Decoder.prototype._extendedSize = function (type, cb) {
   var self = this
   this._buffer(8, function (buf) {
@@ -91,9 +101,10 @@ Decoder.prototype._atom = function (size, parser) {
 }
 
 Decoder.prototype._write = function (data, enc, next) {
+  if (this.destroyed) return
   var drained = true
 
-  while (data.length) {
+  while (data.length && !this.destroyed) {
     var consumed = data.length < this._missing ? data.length : this._missing
     if (this._buf) data.copy(this._buf, this._buf.length - this._missing)
     else if (this._str) drained = this._str.write(consumed === data.length ? data : data.slice(0, consumed))
