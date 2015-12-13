@@ -1,7 +1,7 @@
 var stream = require('readable-stream')
 var util = require('util')
 var uint64be = require('uint64be')
-var encode = require('./atom-encode')
+var encode = require('./box-encode')
 
 var BLANK = new Buffer(65536)
 BLANK.fill(0)
@@ -36,14 +36,26 @@ function Encoder () {
 
 util.inherits(Encoder, stream.Readable)
 
-Encoder.prototype.atom = function (atom, cb) {
+Encoder.prototype.mediaData =
+Encoder.prototype.mdat = function (size, cb) {
+  var stream = new MediaData(this)
+  var length = size + 8
+  if (length > 4228250625) length += 8
+  this.box({type: 'mdat', length: length, stream: stream}, cb)
+  return stream
+}
+
+Encoder.prototype.box = function (box, cb) {
   if (!cb) cb = noop
   if (this.destroyed) return cb(new Error('Encoder is destroyed'))
 
-  var type = atom.type
+  var type = box.type
   var enc = encode[type] || encode.unknown
-  var buf = enc(atom)
-  var length = atom.length || (buf.length + 8)
+  var buf = enc(box)
+
+  if (!box.length && (!buf || box.stream)) throw new Error('box.length is required')
+
+  var length = box.length || (buf.length + 8)
   var extendedLength = 0
 
   if (length > 4228250625) {
@@ -52,19 +64,19 @@ Encoder.prototype.atom = function (atom, cb) {
   }
 
   var header = new Buffer(8)
-  var stream = atom.stream
+  var stream = box.stream
 
   header.writeUInt32BE(length, 0)
-  header.write(atom.type, 4, 4, 'ascii')
+  header.write(box.type, 4, 4, 'ascii')
 
-  this.push(header)
+  var drained = this.push(header)
   if (extendedLength) this.push(uint64be.encode(extendedLength))
 
-  if (!atom.container) {
+  if (!isContainer(box)) {
     if (buf) {
-      this.push(buf)
+      drained = this.push(buf)
     } else {
-      if (!stream) stream = new EmptyStream(atom.length - 8 - (extendedLength ? 8 : 0))
+      if (!stream) stream = new EmptyStream(box.length - 8 - (extendedLength ? 8 : 0))
     }
   }
 
@@ -72,10 +84,12 @@ Encoder.prototype.atom = function (atom, cb) {
     this._stream = stream
     this._stream.on('readable', this._onreadable)
     this._stream.on('end', this._onend)
+    this._stream.on('end', cb)
     this._forward()
+  } else {
+    if (drained) return process.nextTick(cb)
+    this._drain = cb
   }
-
-  this._drain = cb
 }
 
 Encoder.prototype.destroy = function (err) {
@@ -101,6 +115,7 @@ Encoder.prototype._forward = function () {
 
   while (!this.destroyed) {
     var buf = this._stream.read()
+
     if (!buf) {
       this._want = !!this._stream
       return
@@ -124,6 +139,22 @@ Encoder.prototype._read = function () {
   this._reading = false
 }
 
+function isContainer (box) {
+  if (box.container) return true
+  switch (box.type) {
+    case 'mdia':
+    case 'minf':
+    case 'moov':
+    case 'trak':
+    case 'edts':
+    case 'dinf':
+    case 'stbl':
+    case 'udta':
+    return true
+  }
+  return false
+}
+
 function noop () {}
 
 function EmptyStream (size) {
@@ -144,4 +175,20 @@ EmptyStream.prototype._read = function () {
     this._size -= BLANK.length
     this.push(BLANK)
   }
+}
+
+function MediaData (parent) {
+  this._parent = parent
+  this.destroyed = false
+  stream.PassThrough.call(this)
+}
+
+util.inherits(MediaData, stream.PassThrough)
+
+MediaData.prototype.destroy = function (err) {
+  if (this.destroyed) return
+  this.destroyed = true
+  this._parent.destroy(err)
+  if (err) this.emit('error', err)
+  this.emit('close')
 }

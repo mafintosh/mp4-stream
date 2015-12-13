@@ -2,7 +2,9 @@ var stream = require('readable-stream')
 var util = require('util')
 var uint64be = require('uint64be')
 var nextEvent = require('next-event')
-var decode = require('./atom-decode')
+var decode = require('./box-decode')
+
+var EMPTY = new Buffer(0)
 
 module.exports = Decoder
 
@@ -14,24 +16,26 @@ function Decoder () {
 
   this.destroyed = false
 
+  this._pending = 0
   this._missing = 0
   this._offset = 0
   this._buf = null
   this._str = null
   this._cb = null
   this._ondrain = null
+  this._writeBuffer = null
+  this._writeCb = null
 
   this._parse = parse
-  this._atomHeader(parse)
   this._ondrain = null
+  this._kick()
 
   function parse (type, size) {
     if (size === 1) return self._extendedSize(type)
-    if (type === 'mdat') return mdat(size)
 
     switch (type) {
       case 'mdat':
-      return mdat(size)
+      return readStream('mdat', size)
 
       case 'mdia':
       case 'minf':
@@ -44,34 +48,33 @@ function Decoder () {
       return container(type, size)
 
       case 'free':
-      return free(size)
+      return readStream('free', size)
 
       default:
       return self._atom(size, decode[type] || decode.unknown(type))
     }
   }
 
-  function free (size) {
-    self.emit('atom', {type: 'free', offset: self._offset, length: size})
-    self._offset += size
-    self._stream(size - 8, next).resume()
-  }
-
   function container (type, size) {
     // TODO: is container the right word here?
-    self.emit('atom', {type: type, offset: self._offset, length: size, container: true})
+    var offset = self._offset
     self._offset += 8
-    next()
+    self._pending++
+    self.emit('box', {type: type, offset: offset, length: size, container: true}, dec)
   }
 
-  function mdat (size) {
-    var stream = self._stream(size - 8, next)
-    self.emit('atom', {type: 'mdat', offset: self._offset, length: size, stream: stream})
+  function readStream (type, size) {
+    var stream = self._stream(size - 8, null)
+    var offset = self._offset
     self._offset += size
+    self._pending++
+    self.emit('box', {type: type, offset: offset, length: size, stream: stream}, dec)
   }
 
-  function next () {
-    self._atomHeader(self._parse)
+  function dec (err) {
+    if (err) return self.destroy(err)
+    self._pending--
+    self._kick()
   }
 }
 
@@ -93,18 +96,33 @@ Decoder.prototype._extendedSize = function (type, cb) {
 
 Decoder.prototype._atom = function (size, parser) {
   var self = this
-  this._buffer(size - 8, function (buf) {
-    self.emit('atom', parser(buf, self._offset, size))
+  this._buffer(size - 8, onbuffer)
+
+  function onbuffer (buf) {
+    var offset = self._offset
     self._offset += size
-    self._atomHeader(self._parse)
-  })
+    self._pending++
+    self.emit('box', parser(buf, offset, size), dec)
+  }
+
+  function dec (err) {
+    if (err) return self.destroy(err)
+    self._pending--
+    self._kick()
+  }
 }
 
 Decoder.prototype._write = function (data, enc, next) {
   if (this.destroyed) return
-  var drained = true
+  var drained = !this._str || !this._str._writableState.needDrain
 
   while (data.length && !this.destroyed) {
+    if (!this._missing) {
+      this._writeBuffer = data
+      this._writeCb = next
+      return
+    }
+
     var consumed = data.length < this._missing ? data.length : this._missing
     if (this._buf) data.copy(this._buf, this._buf.length - this._missing)
     else if (this._str) drained = this._str.write(consumed === data.length ? data : data.slice(0, consumed))
@@ -123,8 +141,13 @@ Decoder.prototype._write = function (data, enc, next) {
       if (cb) cb(buf)
     }
 
-    if (consumed === data.length) break
-    data = data.slice(consumed)
+    data = consumed === data.length ? EMPTY : data.slice(consumed)
+  }
+
+  if (this._pending && !this._missing) {
+    this._writeBuffer = data
+    this._writeCb = next
+    return
   }
 
   if (drained) next()
@@ -138,9 +161,15 @@ Decoder.prototype._buffer = function (size, cb) {
 }
 
 Decoder.prototype._stream = function (size, cb) {
+  var self = this
   this._missing = size
-  this._str = new stream.PassThrough()
+  this._str = new MediaData(this)
   this._ondrain = nextEvent(this._str, 'drain')
+  this._pending++
+  this._str.on('end', function () {
+    self._pending--
+    self._kick()
+  })
   this._cb = cb
   return this._str
 }
@@ -151,4 +180,32 @@ Decoder.prototype._atomHeader = function (cb) {
     var type = buf.toString('ascii', 4, 8)
     cb(type, size)
   })
+}
+
+Decoder.prototype._kick = function () {
+  if (this._pending) return
+  if (!this._buf && !this._str) this._atomHeader(this._parse)
+  if (this._writeBuffer) {
+    var next = this._writeCb
+    var buffer = this._writeBuffer
+    this._writeBuffer = null
+    this._writeCb = null
+    this._write(buffer, null, next)
+  }
+}
+
+function MediaData (parent) {
+  this._parent = parent
+  this.destroyed = false
+  stream.PassThrough.call(this)
+}
+
+util.inherits(MediaData, stream.PassThrough)
+
+MediaData.prototype.destroy = function (err) {
+  if (this.destroyed) return
+  this.destroyed = true
+  this._parent.destroy(err)
+  if (err) this.emit('error', err)
+  this.emit('close')
 }

@@ -1,101 +1,109 @@
 var TIME_OFFSET = 2082844800000
 var FLAGS = new Buffer([0, 0, 0])
 
+exports.mdia =
+exports.minf =
+exports.moov =
+exports.trak =
+exports.edts =
+exports.dinf =
+exports.stbl =
+exports.udta =
 exports.mdat =
 exports.free = function () {
   return null
 }
 
-exports.ftyp = function (atom) {
-  var brands = atom.compatibleBrands || []
+exports.ftyp = function (box) {
+  var brands = box.compatibleBrands || []
   var buf = new Buffer(8 + brands.length * 4)
-  buf.write(atom.brand, 0)
-  buf.writeUInt32BE(atom.version, 4)
+  buf.write(box.brand, 0)
+  buf.writeUInt32BE(box.version, 4)
   for (var i = 0; i < brands.length; i++) buf.write(brands[i], 8 + (i * 4))
   return buf
 }
 
-exports.mvhd = function (atom) {
+exports.mvhd = function (box) {
   var buf = new Buffer(100)
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
-  date(atom.ctime || new Date(), buf, 4)
-  date(atom.mtime || new Date(), buf, 8)
-  buf.writeUInt32BE(atom.timeScale || 0, 12)
-  buf.writeUInt32BE(atom.duration || 0, 16)
-  fixed32(atom.preferredRate || 0, buf, 20)
-  fixed16(atom.preferredVolume || 0, buf, 24)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
+  date(box.ctime || new Date(), buf, 4)
+  date(box.mtime || new Date(), buf, 8)
+  buf.writeUInt32BE(box.timeScale || 0, 12)
+  buf.writeUInt32BE(box.duration || 0, 16)
+  fixed32(box.preferredRate || 0, buf, 20)
+  fixed16(box.preferredVolume || 0, buf, 24)
   reserved(buf, 26, 36)
-  matrix(atom.matrix, buf, 36)
-  buf.writeUInt32BE(atom.previewTime || 0, 72)
-  buf.writeUInt32BE(atom.previewDuration || 0, 76)
-  buf.writeUInt32BE(atom.posterTime || 0, 80)
-  buf.writeUInt32BE(atom.selectionTime || 0, 84)
-  buf.writeUInt32BE(atom.selectionDuration || 0, 88)
-  buf.writeUInt32BE(atom.currentTime || 0, 92)
-  buf.writeUInt32BE(atom.nextTrackId || 0, 96)
+  matrix(box.matrix, buf, 36)
+  buf.writeUInt32BE(box.previewTime || 0, 72)
+  buf.writeUInt32BE(box.previewDuration || 0, 76)
+  buf.writeUInt32BE(box.posterTime || 0, 80)
+  buf.writeUInt32BE(box.selectionTime || 0, 84)
+  buf.writeUInt32BE(box.selectionDuration || 0, 88)
+  buf.writeUInt32BE(box.currentTime || 0, 92)
+  buf.writeUInt32BE(box.nextTrackId || 0, 96)
   return buf
 }
 
-exports.tkhd = function (atom) {
+exports.tkhd = function (box) {
   var buf = new Buffer(84)
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
-  date(atom.ctime || new Date(), buf, 4)
-  date(atom.mtime || new Date(), buf, 8)
-  buf.writeUInt32BE(atom.trackId || 0, 12)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
+  date(box.ctime || new Date(), buf, 4)
+  date(box.mtime || new Date(), buf, 8)
+  buf.writeUInt32BE(box.trackId || 0, 12)
   reserved(buf, 16, 20)
-  buf.writeUInt32BE(atom.duration || 0, 20)
+  buf.writeUInt32BE(box.duration || 0, 20)
   reserved(buf, 24, 32)
-  buf.writeUInt16BE(atom.layer || 0, 32)
-  buf.writeUInt16BE(atom.alternateGroup || 0, 34)
-  buf.writeUInt16BE(atom.volume || 0, 36)
-  matrix(atom.matrix, buf, 40)
-  buf.writeUInt32BE(atom.trackWidth || 0, 76)
-  buf.writeUInt32BE(atom.trackHeight || 0, 80)
+  buf.writeUInt16BE(box.layer || 0, 32)
+  buf.writeUInt16BE(box.alternateGroup || 0, 34)
+  buf.writeUInt16BE(box.volume || 0, 36)
+  matrix(box.matrix, buf, 40)
+  buf.writeUInt32BE(box.trackWidth || 0, 76)
+  buf.writeUInt32BE(box.trackHeight || 0, 80)
   return buf
 }
 
-exports.mdhd = function (atom) {
+exports.mdhd = function (box) {
   var buf = new Buffer(24)
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
-  date(atom.ctime || new Date(), buf, 4)
-  date(atom.mtime || new Date(), buf, 8)
-  buf.writeUInt32BE(atom.timeScale || 0, 12)
-  buf.writeUInt32BE(atom.duration || 0, 16)
-  buf.writeUInt16BE(atom.language || 0, 20)
-  buf.writeUInt16BE(atom.quality || 0, 22)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
+  date(box.ctime || new Date(), buf, 4)
+  date(box.mtime || new Date(), buf, 8)
+  buf.writeUInt32BE(box.timeScale || 0, 12)
+  buf.writeUInt32BE(box.duration || 0, 16)
+  buf.writeUInt16BE(box.language || 0, 20)
+  buf.writeUInt16BE(box.quality || 0, 22)
   return buf
 }
 
-exports.vmhd = function (atom) {
+exports.vmhd = function (box) {
   var buf = new Buffer(12)
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
-  buf.writeUInt16BE(atom.graphicsMode || 0, 4)
-  var opcolor = atom.opcolor || [0, 0, 0]
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
+  buf.writeUInt16BE(box.graphicsMode || 0, 4)
+  var opcolor = box.opcolor || [0, 0, 0]
   buf.writeUInt16BE(opcolor[0], 6)
   buf.writeUInt16BE(opcolor[1], 8)
   buf.writeUInt16BE(opcolor[2], 10)
   return buf
 }
 
-exports.smhd = function (atom) {
+exports.smhd = function (box) {
   var buf = new Buffer(8)
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
-  buf.writeUInt16BE(atom.balance || 0, 4)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
+  buf.writeUInt16BE(box.balance || 0, 4)
   reserved(buf, 6, 8)
   return buf
 }
 
-exports.stsd = function (atom) {
-  var buf = new Buffer(stsdSize(atom))
-  var entries = atom.entries || []
+exports.stsd = function (box) {
+  var buf = new Buffer(stsdSize(box))
+  var entries = box.entries || []
 
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
   buf.writeUInt32BE(entries.length, 4)
 
   var ptr = 8
@@ -126,13 +134,13 @@ exports.stsd = function (atom) {
 
 exports.stsz =
 exports.stss =
-exports.stco = function (atom) {
-  var data = atom.data
-  var entries = atom.entries || []
+exports.stco = function (box) {
+  var data = box.data
+  var entries = box.entries || []
   var buf = new Buffer(8 + entries.length * 4 + (data ? data.length : 0))
 
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
   buf.writeUInt32BE(entries.length, 4)
 
   for (var i = 0; i < entries.length; i++) {
@@ -144,12 +152,12 @@ exports.stco = function (atom) {
   return buf
 }
 
-exports.stts = function (atom) {
-  var entries = atom.entries || []
+exports.stts = function (box) {
+  var entries = box.entries || []
   var buf = new Buffer(8 + entries.length * 8)
 
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
   buf.writeUInt32BE(entries.length, 4)
 
   for (var i = 0; i < entries.length; i++) {
@@ -161,12 +169,12 @@ exports.stts = function (atom) {
   return buf
 }
 
-exports.ctts = function (atom) {
-  var entries = atom.entries || []
+exports.ctts = function (box) {
+  var entries = box.entries || []
   var buf = new Buffer(8 + entries.length * 8)
 
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
   buf.writeUInt32BE(entries.length, 4)
 
   for (var i = 0; i < entries.length; i++) {
@@ -178,12 +186,12 @@ exports.ctts = function (atom) {
   return buf
 }
 
-exports.stsc = function (atom) {
-  var entries = atom.entries || []
+exports.stsc = function (box) {
+  var entries = box.entries || []
   var buf = new Buffer(8 + entries.length * 12)
 
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
   buf.writeUInt32BE(entries.length, 4)
 
   for (var i = 0; i < entries.length; i++) {
@@ -196,12 +204,12 @@ exports.stsc = function (atom) {
   return buf
 }
 
-exports.dref = function (atom) {
-  var buf = new Buffer(drefSize(atom))
-  var entries = atom.entries || []
+exports.dref = function (box) {
+  var buf = new Buffer(drefSize(box))
+  var entries = box.entries || []
 
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
   buf.writeUInt32BE(entries.length, 4)
 
   var ptr = 8
@@ -224,12 +232,12 @@ exports.dref = function (atom) {
   return buf
 }
 
-exports.elst = function (atom) {
-  var entries = atom.entries || []
+exports.elst = function (box) {
+  var entries = box.entries || []
   var buf = new Buffer(8 + entries.length * 12)
 
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
   buf.writeUInt32BE(entries.length, 4)
 
   for (var i = 0; i < entries.length; i++) {
@@ -242,21 +250,21 @@ exports.elst = function (atom) {
   return buf
 }
 
-exports.hdlr = function (atom) {
-  var buf = new Buffer(24 + (atom.componentName ? Buffer.byteLength(atom.componentName) : 0) + 1)
+exports.hdlr = function (box) {
+  var buf = new Buffer(24 + (box.componentName ? Buffer.byteLength(box.componentName) : 0) + 1)
 
-  buf[0] = atom.version || 0
-  flags(atom.flags, buf, 1)
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
 
-  if (atom.componentType) buf.write(atom.componentType, 4, 4, 'ascii')
+  if (box.componentType) buf.write(box.componentType, 4, 4, 'ascii')
   else reserved(buf, 4, 8)
 
-  if (atom.componentSubType) buf.write(atom.componentSubType, 8, 4, 'ascii')
+  if (box.componentSubType) buf.write(box.componentSubType, 8, 4, 'ascii')
   else reserved(buf, 8, 12)
 
   reserved(buf, 12, 24)
 
-  if (atom.componentName) buf.write(atom.componentName, 24, buf.length - 24, 'ascii')
+  if (box.componentName) buf.write(box.componentName, 24, buf.length - 24, 'ascii')
   else reserved(buf, 24, buf.length)
 
   buf[buf.length - 1] = 0
@@ -264,25 +272,25 @@ exports.hdlr = function (atom) {
   return buf
 }
 
-exports.unknown = function (atom) {
-  return atom.buffer
+exports.unknown = function (box) {
+  return box.buffer
 }
 
-function drefSize (atom) {
+function drefSize (box) {
   var totalSize = 8
-  if (!atom.entries) return totalSize
-  for (var i = 0; i < atom.entries.length; i++) {
-    var buf = atom.entries[i].buf
+  if (!box.entries) return totalSize
+  for (var i = 0; i < box.entries.length; i++) {
+    var buf = box.entries[i].buf
     totalSize += (buf ? buf.length : 0) + 4 + 4
   }
   return totalSize
 }
 
-function stsdSize (atom) {
+function stsdSize (box) {
   var totalSize = 8
-  if (!atom.entries) return totalSize
-  for (var i = 0; i < atom.entries.length; i++) {
-    var data = atom.entries[i].data
+  if (!box.entries) return totalSize
+  for (var i = 0; i < box.entries.length; i++) {
+    var data = box.entries[i].data
     totalSize += (data ? data.length : 0) + 4 + 4 + 2 + 6
   }
   return totalSize

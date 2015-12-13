@@ -1,6 +1,6 @@
 # mp4-stream
 
-Streaming mp4 encoder and decoder (WIP)
+Streaming mp4 encoder and decoder
 
 ```
 npm install mp4-stream
@@ -16,19 +16,20 @@ var decode = mp4.decode()
 
 fs.createReadStream('video.mp4')
   .pipe(decode)
-  .on('atom', function (atom) {
-    console.log('found atom (' + atom.type + ') at ' + atom.offset + ' (' + atom.length + ')')
-    if (atom.container) {
-      console.log('atom has child atoms (will be emitted next)')
+  .on('box', function (box, next) {
+    console.log('found box (' + box.type + ') at ' + box.offset + ' (' + box.length + ')')
+    if (box.container) {
+      console.log('box has child boxes (will be emitted next)')
     }
-    if (atom.stream) {
-      console.log('atom has stream data (consume stream to continue)')
-      atom.stream.resume()
+    if (box.stream) {
+      console.log('box has stream data (consume stream to continue)')
+      box.stream.resume()
     }
+    next() // call this when you're done
   })
 ```
 
-All atoms have a type thats a 4 char string with a type name.
+All boxes have a type thats a 4 char string with a type name.
 
 ## API
 
@@ -36,15 +37,18 @@ All atoms have a type thats a 4 char string with a type name.
 
 Create a new decoder.
 
-The decoder is a writable stream you should write a mp4 file to.
-The stream will emit `atom` when a new atom is found.
+The decoder is a writable stream you should write a mp4 file to. It emits the following additional events:
+
+* `on('box', box, next)` - emitted when a new box is found.
 
 ``` js
 var fs = require('fs')
 var stream = mp4.decode()
 
-stream.on('atom', function (atom) {
-  console.log('found new atom:', atom)
+stream.on('box', function (box, next) {
+  if (box.stream) box.stream.resume() // boxes with media content have a stream attached
+  console.log('found new box:', box)
+  next()
 })
 
 fs.createReadStream('my-video.mp4').pipe(stream)
@@ -54,8 +58,11 @@ fs.createReadStream('my-video.mp4').pipe(stream)
 
 Create a new encoder.
 
-The encoder is a readable stream you can use to generate a mp4 file with.
-Call `stream.atom(atom, [callback])` with a new mp4 atom to generate one and `stream.finalize()` to end it.
+The encoder is a readable stream you can use to generate a mp4 file. It has the following API:
+
+* `stream.box(box, [callback])` - adds a new mp4 box to the stream.
+* `var writeStream = stream.mediaData(size)` - helper that adds an `mdat` box. write the media content to this stream.
+* `stream.finalize()` - finalizes the mp4 stream. call this when you're done.
 
 ``` js
 var fs = require('fs')
@@ -63,9 +70,17 @@ var stream = mp4.encode()
 
 stream.pipe(fs.createWriteStream('my-new-video.mp4'))
 
-stream.atom(anMP4Atom, function (err) {
-  // atom flushed
+stream.box(anMP4Box, function (err) {
+  // box flushed
+
+  var content = stream.mediaData(lengthOfStream, function () {
+    // wrote media data
+    stream.finalize()
+  })
+
+  someContent.pipe(content)
 })
+
 ```
 
 ## Decode and encode a file
@@ -76,18 +91,18 @@ To decode and encode an mp4 file with this module do
 var encoder = mp4.encode()
 var decoder = mp4.decode()
 
-decoder.on('atom', function (atom) {
-  encoder.atom(atom)
+decoder.on('box', function (box, next) {
+  encoder.box(box, next)
 })
 
 fs.createReadStream('my-movie.mp4').pipe(decoder)
 encoder.pipe(fs.createWriteStream('my-movie-copy.mp4'))
 ```
 
-## Atoms
+## Boxes
 
-Mp4 supports a wide range of atoms.
-See the [encoders](atom-encode.js) and [decoders](atom-decode.js) for more information on how to create atoms with this module.
+Mp4 supports a wide range of boxes.
+See the [encoders](box-encode.js) and [decoders](box-decode.js) for more information on how to create boxes with this module.
 
 ## License
 
