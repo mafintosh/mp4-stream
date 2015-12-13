@@ -35,7 +35,7 @@ function Decoder () {
 
     switch (type) {
       case 'mdat':
-      return readStream('mdat', size)
+        return readStream('mdat', size)
 
       case 'mdia':
       case 'minf':
@@ -45,13 +45,13 @@ function Decoder () {
       case 'dinf':
       case 'stbl':
       case 'udta':
-      return container(type, size)
+        return container(type, size)
 
       case 'free':
-      return readStream('free', size)
+        return readStream('free', size)
 
       default:
-      return self._atom(size, decode[type] || decode.unknown(type))
+        return self._atom(size, decode[type] || decode.unknown(type))
     }
   }
 

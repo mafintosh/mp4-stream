@@ -150,7 +150,7 @@ function isContainer (box) {
     case 'dinf':
     case 'stbl':
     case 'udta':
-    return true
+      return true
   }
   return false
 }

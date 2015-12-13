@@ -8,7 +8,13 @@
     "readable-stream": "^2.0.3",
     "uint64be": "^1.0.1"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "standard": "^5.4.1",
+    "tape": "^4.2.2"
+  },
+  "scripts": {
+    "test": "standard && tape test.js"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/mafintosh/mp4-stream.git"
