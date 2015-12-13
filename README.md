@@ -63,7 +63,7 @@ Create a new encoder.
 The encoder is a readable stream you can use to generate a mp4 file. It has the following API:
 
 * `stream.box(box, [callback])` - adds a new mp4 box to the stream.
-* `var writeStream = stream.mediaData(size)` - helper that adds an `mdat` box. write the media content to this stream.
+* `var ws = stream.mediaData(size)` - helper that adds an `mdat` box. write the media content to this stream.
 * `stream.finalize()` - finalizes the mp4 stream. call this when you're done.
 
 ``` js
