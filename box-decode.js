@@ -141,11 +141,16 @@ exports.stco = function (buf, offset, length) {
 }
 
 exports.stsz = function (buf, offset, length) {
-  var num = buf.readUInt32BE(4)
+  var size = buf.readUInt32BE(4)
+  var num = buf.readUInt32BE(8)
   var entries = new Array(num)
 
   for (var i = 0; i < num; i++) {
-    entries[i] = buf.readUInt32BE(i * 4 + 8)
+    if (size === 0) {
+      entries[i] = buf.readUInt32BE(i * 4 + 8)
+    } else {
+      entries[i] = size
+    }
   }
 
   return {
@@ -154,8 +159,7 @@ exports.stsz = function (buf, offset, length) {
     length: length,
     version: buf[0],
     flags: buf.slice(1, 4),
-    entries: entries,
-    data: buf.slice(num * 4 + 8)
+    entries: entries
   }
 }
 

@@ -132,12 +132,26 @@ exports.stsd = function (box) {
   return buf
 }
 
-exports.stsz =
+exports.stsz = function (box) {
+  var entries = box.entries || []
+  var buf = new Buffer(12 + entries.length * 4)
+
+  buf[0] = box.version || 0
+  flags(box.flags, buf, 1)
+  buf.writeUInt32BE(0, 4)
+  buf.writeUInt32BE(entries.length, 8)
+
+  for (var i = 0; i < entries.length; i++) {
+    buf.writeUInt32BE(entries[i], i * 4 + 12)
+  }
+
+  return buf
+}
+
 exports.stss =
 exports.stco = function (box) {
-  var data = box.data
   var entries = box.entries || []
-  var buf = new Buffer(8 + entries.length * 4 + (data ? data.length : 0))
+  var buf = new Buffer(8 + entries.length * 4)
 
   buf[0] = box.version || 0
   flags(box.flags, buf, 1)
@@ -146,8 +160,6 @@ exports.stco = function (box) {
   for (var i = 0; i < entries.length; i++) {
     buf.writeUInt32BE(entries[i], i * 4 + 8)
   }
-
-  if (data) data.copy(buf, entries.length * 4 + 8)
 
   return buf
 }
