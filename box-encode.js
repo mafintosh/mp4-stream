@@ -18,7 +18,7 @@ exports.ftyp = function (box) {
   var brands = box.compatibleBrands || []
   var buf = new Buffer(8 + brands.length * 4)
   buf.write(box.brand, 0)
-  buf.writeUInt32BE(box.version, 4)
+  buf.writeUInt32BE(box.brandVersion, 4)
   for (var i = 0; i < brands.length; i++) buf.write(brands[i], 8 + (i * 4))
   return buf
 }

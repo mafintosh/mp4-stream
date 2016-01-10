@@ -11,7 +11,7 @@ tape('generates and parses', function (t) {
       t.same(box.type, 'ftyp')
       t.same(box.offset, nextOffset)
       t.same(box.brand, 'mafi')
-      t.same(box.version, 1)
+      t.same(box.brandVersion, 1)
       nextOffset += box.length
     } else {
       t.same(box.type, 'mdat')
@@ -33,7 +33,7 @@ tape('generates and parses', function (t) {
   encode.box({
     type: 'ftyp',
     brand: 'mafi',
-    version: 1
+    brandVersion: 1
   })
 
   var stream = encode.mediaData(11)
@@ -55,7 +55,7 @@ tape('generates and parses with decoder/encoder in between', function (t) {
       t.same(box.type, 'ftyp')
       t.same(box.offset, nextOffset)
       t.same(box.brand, 'mafi')
-      t.same(box.version, 1)
+      t.same(box.brandVersion, 1)
       nextOffset += box.length
     } else {
       t.same(box.type, 'mdat')
@@ -77,7 +77,7 @@ tape('generates and parses with decoder/encoder in between', function (t) {
   encode.box({
     type: 'ftyp',
     brand: 'mafi',
-    version: 1
+    brandVersion: 1
   })
 
   var stream = encode.mediaData(11)

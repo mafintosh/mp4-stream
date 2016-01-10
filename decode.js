@@ -51,7 +51,7 @@ function Decoder () {
         return readStream('free', size)
 
       default:
-        return self._atom(size, decode[type] || decode.unknown(type))
+        return self._atom(type, size)
     }
   }
 
@@ -94,15 +94,20 @@ Decoder.prototype._extendedSize = function (type, cb) {
   })
 }
 
-Decoder.prototype._atom = function (size, parser) {
+Decoder.prototype._atom = function (type, size) {
   var self = this
   this._buffer(size - 8, onbuffer)
+  var parser = decode[type] || decode.unknown(type)
 
   function onbuffer (buf) {
     var offset = self._offset
     self._offset += size
     self._pending++
-    self.emit('box', parser(buf, offset, size), dec)
+    var box = parser(buf, offset, size)
+    box.type = type
+    box.offset = offset
+    box.length = size
+    self.emit('box', box, dec)
   }
 
   function dec (err) {
