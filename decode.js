@@ -1,8 +1,8 @@
-var stream = require('readable-stream')
+var stream = require('stream')
 var util = require('util')
 var uint64be = require('uint64be')
 var nextEvent = require('next-event')
-var decode = require('./box-decode')
+var Box = require('./box')
 
 var EMPTY = new Buffer(0)
 
@@ -18,7 +18,6 @@ function Decoder () {
 
   this._pending = 0
   this._missing = 0
-  this._offset = 0
   this._buf = null
   this._str = null
   this._cb = null
@@ -26,56 +25,8 @@ function Decoder () {
   this._writeBuffer = null
   this._writeCb = null
 
-  this._parse = parse
   this._ondrain = null
   this._kick()
-
-  function parse (type, size) {
-    if (size === 1) return self._extendedSize(type)
-
-    switch (type) {
-      case 'mdat':
-        return readStream('mdat', size)
-
-      case 'mdia':
-      case 'minf':
-      case 'moov':
-      case 'trak':
-      case 'edts':
-      case 'dinf':
-      case 'stbl':
-      case 'udta':
-        return container(type, size)
-
-      case 'free':
-        return readStream('free', size)
-
-      default:
-        return self._atom(type, size)
-    }
-  }
-
-  function container (type, size) {
-    // TODO: is container the right word here?
-    var offset = self._offset
-    self._offset += 8
-    self._pending++
-    self.emit('box', {type: type, offset: offset, length: size, container: true}, dec)
-  }
-
-  function readStream (type, size) {
-    var stream = self._stream(size - 8, null)
-    var offset = self._offset
-    self._offset += size
-    self._pending++
-    self.emit('box', {type: type, offset: offset, length: size, stream: stream}, dec)
-  }
-
-  function dec (err) {
-    if (err) return self.destroy(err)
-    self._pending--
-    self._kick()
-  }
 }
 
 util.inherits(Decoder, stream.Writable)
@@ -85,36 +36,6 @@ Decoder.prototype.destroy = function (err) {
   this.destroyed = true
   if (err) this.emit('error', err)
   this.emit('close')
-}
-
-Decoder.prototype._extendedSize = function (type, cb) {
-  var self = this
-  this._buffer(8, function (buf) {
-    self._parse(type, uint64be.decode(buf) - 8)
-  })
-}
-
-Decoder.prototype._atom = function (type, size) {
-  var self = this
-  this._buffer(size - 8, onbuffer)
-  var parser = decode[type] || decode.unknown(type)
-
-  function onbuffer (buf) {
-    var offset = self._offset
-    self._offset += size
-    self._pending++
-    var box = parser(buf, offset, size)
-    box.type = type
-    box.offset = offset
-    box.length = size
-    self.emit('box', box, dec)
-  }
-
-  function dec (err) {
-    if (err) return self.destroy(err)
-    self._pending--
-    self._kick()
-  }
 }
 
 Decoder.prototype._write = function (data, enc, next) {
@@ -165,6 +86,11 @@ Decoder.prototype._buffer = function (size, cb) {
   this._cb = cb
 }
 
+Decoder.prototype._ignore = function (size, cb) {
+  this._missing = size
+  this._cb = cb
+}
+
 Decoder.prototype._stream = function (size, cb) {
   var self = this
   this._missing = size
@@ -179,17 +105,53 @@ Decoder.prototype._stream = function (size, cb) {
   return this._str
 }
 
-Decoder.prototype._atomHeader = function (cb) {
-  this._buffer(8, function (buf) {
-    var size = buf.readUInt32BE(0)
-    var type = buf.toString('ascii', 4, 8)
-    cb(type, size)
-  })
+Decoder.prototype._readBox = function () {
+  var self = this
+  bufferHeaders(8)
+
+  function parse (headers) {
+    self._pending++
+    self.emit('box', headers, function (op, cb) {
+      if (op === 'stream') {
+        var stream = self._stream(headers.contentLen, null)
+        cb(stream)
+      } else if (op === 'decode') {
+        self._buffer(headers.contentLen, function (buf) {
+          var box = Box.decodeWithoutHeaders(headers, buf)
+          cb(box)
+          dec()
+        })
+      } else {
+        self._ignore(headers.contentLen, dec)
+      }
+    })
+  }
+
+  function bufferHeaders (len, buf) {
+    self._buffer(len, function (additionalBuf) {
+      if (buf) {
+        buf = Buffer.concat(buf, additionalBuf)
+      } else {
+        buf = additionalBuf
+      }
+      var headers = Box.readHeaders(buf)
+      if (typeof headers === 'number') {
+        bufferHeaders(headers - buf.length, buf)
+      } else {
+        parse(headers)
+      }
+    })
+  }
+
+  function dec () {
+    self._pending--
+    self._kick()
+  }
 }
 
 Decoder.prototype._kick = function () {
   if (this._pending) return
-  if (!this._buf && !this._str) this._atomHeader(this._parse)
+  if (!this._buf && !this._str) this._readBox()
   if (this._writeBuffer) {
     var next = this._writeCb
     var buffer = this._writeBuffer
