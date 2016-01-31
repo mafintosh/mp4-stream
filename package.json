@@ -4,9 +4,9 @@
   "description": "Streaming mp4 encoder and decoder",
   "main": "index.js",
   "dependencies": {
+    "mp4-box-encoding": "^1.0.0",
     "next-event": "^1.0.0",
-    "readable-stream": "^2.0.3",
-    "uint64be": "^1.0.1"
+    "readable-stream": "^2.0.3"
   },
   "devDependencies": {
     "standard": "^5.4.1",

@@ -1,9 +1,10 @@
 var stream = require('readable-stream')
 var util = require('util')
-var uint64be = require('uint64be')
-var Box = require('./box')
+var Box = require('mp4-box-encoding')
 
 module.exports = Encoder
+
+function noop () {}
 
 function Encoder () {
   if (!(this instanceof Encoder)) return new Encoder()
@@ -48,16 +49,18 @@ Encoder.prototype.box = function (box, cb) {
   if (box.encodeBufferLen) {
     buf = new Buffer(box.encodeBufferLen)
   }
-  buf = Box.encode(box, buf)
-  drained = this.push(buf)
-
-  if (box.type === 'mdat') {
+  if (box.stream) {
+    box.buffer = null
+    buf = Box.encode(box, buf)
+    this.push(buf)
     this._stream = box.stream
     this._stream.on('readable', this._onreadable)
     this._stream.on('end', this._onend)
     this._stream.on('end', cb)
     this._forward()
   } else {
+    buf = Box.encode(box, buf)
+    var drained = this.push(buf)
     if (drained) return process.nextTick(cb)
     this._drain = cb
   }

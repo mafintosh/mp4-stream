@@ -1,8 +1,7 @@
-var stream = require('stream')
+var stream = require('readable-stream')
 var util = require('util')
-var uint64be = require('uint64be')
 var nextEvent = require('next-event')
-var Box = require('./box')
+var Box = require('mp4-box-encoding')
 
 var EMPTY = new Buffer(0)
 
@@ -11,8 +10,6 @@ module.exports = Decoder
 function Decoder () {
   if (!(this instanceof Decoder)) return new Decoder()
   stream.Writable.call(this)
-
-  var self = this
 
   this.destroyed = false
 
@@ -86,11 +83,6 @@ Decoder.prototype._buffer = function (size, cb) {
   this._cb = cb
 }
 
-Decoder.prototype._ignore = function (size, cb) {
-  this._missing = size
-  this._cb = cb
-}
-
 Decoder.prototype._stream = function (size, cb) {
   var self = this
   this._missing = size
@@ -109,24 +101,6 @@ Decoder.prototype._readBox = function () {
   var self = this
   bufferHeaders(8)
 
-  function parse (headers) {
-    self._pending++
-    self.emit('box', headers, function (op, cb) {
-      if (op === 'stream') {
-        var stream = self._stream(headers.contentLen, null)
-        cb(stream)
-      } else if (op === 'decode') {
-        self._buffer(headers.contentLen, function (buf) {
-          var box = Box.decodeWithoutHeaders(headers, buf)
-          cb(box)
-          dec()
-        })
-      } else {
-        self._ignore(headers.contentLen, dec)
-      }
-    })
-  }
-
   function bufferHeaders (len, buf) {
     self._buffer(len, function (additionalBuf) {
       if (buf) {
@@ -138,12 +112,45 @@ Decoder.prototype._readBox = function () {
       if (typeof headers === 'number') {
         bufferHeaders(headers - buf.length, buf)
       } else {
-        parse(headers)
+        self._pending++
+        self._headers = headers
+        self.emit('box', headers)
       }
     })
   }
+}
 
-  function dec () {
+Decoder.prototype.stream = function () {
+  var self = this
+  if (!self._headers) throw new Error('this function can only be called once after \'box\' is emitted')
+  var headers = self._headers
+  self._headers = null
+
+  return self._stream(headers.contentLen, null)
+}
+
+Decoder.prototype.decode = function (cb) {
+  var self = this
+  if (!self._headers) throw new Error('this function can only be called once after \'box\' is emitted')
+  var headers = self._headers
+  self._headers = null
+
+  self._buffer(headers.contentLen, function (buf) {
+    var box = Box.decodeWithoutHeaders(headers, buf)
+    cb(box)
+    self._pending--
+    self._kick()
+  })
+}
+
+Decoder.prototype.ignore = function () {
+  var self = this
+  if (!self._headers) throw new Error('this function can only be called once after \'box\' is emitted')
+  var headers = self._headers
+  self._headers = null
+
+  this._missing = headers.contentLen
+  this._cb = function () {
     self._pending--
     self._kick()
   }
