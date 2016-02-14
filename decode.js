@@ -1,5 +1,5 @@
 var stream = require('readable-stream')
-var util = require('util')
+var inherits = require('inherits')
 var nextEvent = require('next-event')
 var Box = require('mp4-box-encoding')
 
@@ -26,7 +26,7 @@ function Decoder () {
   this._kick()
 }
 
-util.inherits(Decoder, stream.Writable)
+inherits(Decoder, stream.Writable)
 
 Decoder.prototype.destroy = function (err) {
   if (this.destroyed) return
@@ -174,7 +174,7 @@ function MediaData (parent) {
   stream.PassThrough.call(this)
 }
 
-util.inherits(MediaData, stream.PassThrough)
+inherits(MediaData, stream.PassThrough)
 
 MediaData.prototype.destroy = function (err) {
   if (this.destroyed) return

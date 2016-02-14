@@ -1,5 +1,5 @@
 var stream = require('readable-stream')
-var util = require('util')
+var inherits = require('inherits')
 var Box = require('mp4-box-encoding')
 
 module.exports = Encoder
@@ -32,7 +32,7 @@ function Encoder () {
   }
 }
 
-util.inherits(Encoder, stream.Readable)
+inherits(Encoder, stream.Readable)
 
 Encoder.prototype.mediaData =
 Encoder.prototype.mdat = function (size, cb) {
@@ -119,7 +119,7 @@ function MediaData (parent) {
   stream.PassThrough.call(this)
 }
 
-util.inherits(MediaData, stream.PassThrough)
+inherits(MediaData, stream.PassThrough)
 
 MediaData.prototype.destroy = function (err) {
   if (this.destroyed) return
