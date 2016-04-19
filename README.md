@@ -53,7 +53,7 @@ Each time the `box` event fires, you must call one of these three functions:
 
 * `stream.ignore()` - ignore the entire box and continue parsing after its end
 * `stream.stream()` - get a readable stream of the box contents
-* `stream.decode(callback) - decode the box, including all childeren in the case of containers, and pass
+* `stream.decode(callback)` - decode the box, including all childeren in the case of containers, and pass
 the resulting box object to the callback
 
 ``` js
