@@ -104,7 +104,7 @@ Decoder.prototype._readBox = function () {
   function bufferHeaders (len, buf) {
     self._buffer(len, function (additionalBuf) {
       if (buf) {
-        buf = Buffer.concat(buf, additionalBuf)
+        buf = Buffer.concat([buf, additionalBuf])
       } else {
         buf = additionalBuf
       }
