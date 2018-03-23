@@ -2,8 +2,9 @@ var stream = require('readable-stream')
 var inherits = require('inherits')
 var nextEvent = require('next-event')
 var Box = require('mp4-box-encoding')
+var bufferAlloc = require('buffer-alloc')
 
-var EMPTY = new Buffer(0)
+var EMPTY = bufferAlloc(0)
 
 module.exports = Decoder
 
@@ -79,7 +80,7 @@ Decoder.prototype._write = function (data, enc, next) {
 
 Decoder.prototype._buffer = function (size, cb) {
   this._missing = size
-  this._buf = new Buffer(size)
+  this._buf = bufferAlloc(size)
   this._cb = cb
 }
 
