@@ -16,6 +16,7 @@ function Decoder () {
 
   this._pending = 0
   this._missing = 0
+  this._ignoreEmpty = false
   this._buf = null
   this._str = null
   this._cb = null
@@ -41,7 +42,7 @@ Decoder.prototype._write = function (data, enc, next) {
   var drained = !this._str || !this._str._writableState.needDrain
 
   while (data.length && !this.destroyed) {
-    if (!this._missing) {
+    if (!this._missing && !this._ignoreEmpty) {
       this._writeBuffer = data
       this._writeCb = next
       return
@@ -61,6 +62,7 @@ Decoder.prototype._write = function (data, enc, next) {
       this._buf = this._cb = this._str = this._ondrain = null
       drained = true
 
+      this._ignoreEmpty = false
       if (stream) stream.end()
       if (cb) cb(buf)
     }
@@ -151,6 +153,9 @@ Decoder.prototype.ignore = function () {
   self._headers = null
 
   this._missing = headers.contentLen
+  if (this._missing === 0) {
+    this._ignoreEmpty = true
+  }
   this._cb = function () {
     self._pending--
     self._kick()
