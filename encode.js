@@ -1,7 +1,6 @@
 var stream = require('readable-stream')
 var inherits = require('inherits')
 var Box = require('mp4-box-encoding')
-var bufferAlloc = require('buffer-alloc')
 
 module.exports = Encoder
 
@@ -49,7 +48,7 @@ Encoder.prototype.box = function (box, cb) {
 
   var buf
   if (box.encodeBufferLen) {
-    buf = bufferAlloc(box.encodeBufferLen)
+    buf = Buffer.alloc(box.encodeBufferLen)
   }
   if (box.stream) {
     box.buffer = null
