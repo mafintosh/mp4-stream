@@ -1,5 +1,6 @@
 var stream = require('readable-stream')
 var Box = require('mp4-box-encoding')
+var queueMicrotask = require('queue-microtask')
 
 function noop () {}
 
@@ -56,7 +57,7 @@ class Encoder extends stream.Readable {
     } else {
       buf = Box.encode(box, buf)
       var drained = this.push(buf)
-      if (drained) return process.nextTick(cb)
+      if (drained) return queueMicrotask(cb)
       this._drain = cb
     }
   }
