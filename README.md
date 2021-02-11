@@ -6,7 +6,7 @@ Streaming mp4 encoder and decoder
 npm install mp4-stream
 ```
 
-[![build status](http://img.shields.io/travis/mafintosh/mp4-stream.svg?style=flat)](http://travis-ci.org/mafintosh/mp4-stream)
+[![build status](http://img.shields.io/ci/mafintosh/mp4-stream.svg?style=flat)](http://ci-ci.org/mafintosh/mp4-stream)
 
 ## Usage
 
