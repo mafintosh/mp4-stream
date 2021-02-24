@@ -120,7 +120,10 @@ class Decoder extends stream.Writable {
     var headers = this._headers
     this._headers = null
 
-    return this._stream(headers.contentLen, null)
+    return this._stream(headers.contentLen, () => {
+      this._pending--
+      this._kick()
+    })
   }
 
   decode (cb) {
